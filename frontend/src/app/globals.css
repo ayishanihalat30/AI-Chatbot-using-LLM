@@ -1,0 +1,71 @@
+@import "highlight.js/styles/github-dark.css";
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  color-scheme: light dark;
+}
+html,
+body {
+  height: 100%;
+}
+body {
+  @apply bg-white text-slate-900 antialiased;
+  font-family: system-ui, -apple-system, "Segoe UI", "Noto Sans", "Noto Sans Malayalam", "Noto Sans Devanagari",
+    "Noto Sans Tamil", "Noto Sans Kannada", "Noto Sans Telugu", "Noto Naskh Arabic", sans-serif;
+}
+@media (prefers-color-scheme: dark) {
+  body {
+    @apply bg-slate-950 text-slate-100;
+  }
+}
+
+.btn {
+  @apply inline-flex items-center justify-center gap-2 rounded-lg px-3 py-2 text-sm font-medium transition disabled:opacity-50;
+}
+.btn-primary {
+  @apply bg-indigo-600 text-white hover:bg-indigo-500;
+}
+.btn-ghost {
+  @apply hover:bg-slate-100 dark:hover:bg-slate-800;
+}
+.input {
+  @apply w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/30 dark:border-slate-700 dark:bg-slate-900;
+}
+
+.prose-chat p {
+  @apply my-2 leading-relaxed;
+}
+.prose-chat ul {
+  @apply my-2 list-disc ps-6;
+}
+.prose-chat ol {
+  @apply my-2 list-decimal ps-6;
+}
+.prose-chat h1,
+.prose-chat h2,
+.prose-chat h3 {
+  @apply mt-4 mb-2 font-semibold;
+}
+.prose-chat a {
+  @apply text-indigo-600 underline dark:text-indigo-400;
+}
+.prose-chat pre {
+  @apply my-3 overflow-x-auto rounded-lg bg-slate-900 p-3 text-sm;
+  direction: ltr;
+  text-align: left;
+}
+.prose-chat code:not(pre code) {
+  @apply rounded bg-slate-100 px-1 py-0.5 text-[0.85em] dark:bg-slate-800;
+}
+.prose-chat table {
+  @apply my-3 block overflow-x-auto text-sm;
+}
+.prose-chat th,
+.prose-chat td {
+  @apply border border-slate-300 px-2 py-1 dark:border-slate-700;
+}
+.prose-chat blockquote {
+  @apply my-2 border-s-4 border-slate-300 ps-3 text-slate-600 dark:border-slate-700 dark:text-slate-400;
+}
