@@ -27,8 +27,8 @@ class Settings(BaseSettings):
     cors_origins: str = "http://localhost:3000"
 
     gemini_api_key: str | None = None
-    chat_model: str = "gemini-2.5-flash"
-    embed_model: str = "gemini-embedding-001"
+    chat_model: str = "gemini-3.8-flash"
+    embed_model: str = "gemini-embedding-2"
     embed_dim: int = 768
 
     blob_read_write_token: str | None = None

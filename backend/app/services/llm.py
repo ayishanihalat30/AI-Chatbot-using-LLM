@@ -27,6 +27,7 @@ class GeminiClient:
         if not s.gemini_api_key:
             raise RuntimeError("GEMINI_API_KEY is not configured")
         self._s = s
+        self._embed_model = s.embed_model
         self._client = genai.Client(api_key=s.gemini_api_key)
 
     async def stream(self, system: str, messages: list[dict]) -> AsyncIterator[str]:
@@ -55,13 +56,28 @@ class GeminiClient:
         out: list[list[float]] = []
         task = "RETRIEVAL_QUERY" if query else "RETRIEVAL_DOCUMENT"
         for i in range(0, len(texts), EMBED_BATCH):
-            res = await self._client.aio.models.embed_content(
-                model=self._s.embed_model,
-                contents=texts[i : i + EMBED_BATCH],
-                config=types.EmbedContentConfig(task_type=task, output_dimensionality=self._s.embed_dim),
-            )
+            res = await self._embed_batch(texts[i : i + EMBED_BATCH], types, task)
             out.extend(_normalize(e.values) for e in res.embeddings)
         return out
+
+    async def _embed_batch(self, batch, types, task):
+        # Google retires model names over time; fall back through known ones and remember what works.
+        candidates = [self._embed_model, "gemini-embedding-2", "gemini-embedding-001"]
+        last: Exception | None = None
+        for model in dict.fromkeys(candidates):
+            try:
+                res = await self._client.aio.models.embed_content(
+                    model=model,
+                    contents=batch,
+                    config=types.EmbedContentConfig(task_type=task, output_dimensionality=self._s.embed_dim),
+                )
+                self._embed_model = model
+                return res
+            except Exception as e:
+                if "404" not in str(e) and "NOT_FOUND" not in str(e):
+                    raise
+                last = e
+        raise last  # type: ignore[misc]
 
     async def describe_media(self, data: bytes, mime: str, instruction: str) -> str:
         from google.genai import types
