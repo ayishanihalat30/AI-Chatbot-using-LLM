@@ -109,6 +109,8 @@ export function ChatView({ chatId, onChatCreated, onChanged }: Props) {
     } finally {
       setStreaming(false);
       abort.current = null;
+      // drop an empty assistant placeholder so a failed reply doesn't hang on "Thinking…"
+      setMessages((all) => all.filter((m) => !(m.id === "streaming" && !m.content)));
       if (!chatId) onChatCreated(cid);
       else onChanged();
     }

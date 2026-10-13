@@ -156,7 +156,12 @@ async def send_message(
     user_id = user.id
 
     async def gen() -> AsyncIterator[str]:
-        llm = get_llm()
+        try:
+            llm = get_llm()
+        except Exception as e:
+            log.error("LLM unavailable: %s", e)
+            yield sse("error", {"message": "AI service is not configured (missing or invalid GEMINI_API_KEY)."})
+            return
         async with SessionLocal() as s:
             chat = await s.get(Chat, chat_id)
             s.add(Message(chat_id=chat_id, role="user", content=body.content))
@@ -192,9 +197,9 @@ async def send_message(
                 async for tok in llm.stream(system, history):
                     answer += tok
                     yield sse("token", tok)
-            except Exception:
+            except Exception as e:
                 log.exception("generation failed")
-                yield sse("error", {"message": "The AI service failed to respond. Please try again."})
+                yield sse("error", {"message": f"The AI service failed to respond: {str(e)[:200]}"})
                 if not answer:
                     return
             used = [c for c in citations if f"[{c['n']}]" in answer] or (citations if answer else [])
