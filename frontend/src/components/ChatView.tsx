@@ -28,6 +28,7 @@ export function ChatView({ chatId, onChatCreated, onChanged }: Props) {
   const [docs, setDocs] = useState<Doc[]>([]);
   const [scope, setScope] = useState("");
   const [showExport, setShowExport] = useState(false);
+  const [activeReply, setActiveReply] = useState<string | null>(null);
   const abort = useRef<AbortController | null>(null);
   const bottom = useRef<HTMLDivElement>(null);
   const fileInput = useRef<HTMLInputElement>(null);
@@ -87,8 +88,11 @@ export function ChatView({ chatId, onChatCreated, onChanged }: Props) {
       setError(err instanceof Error ? err.message : t("error"));
       return;
     }
-    setMessages((m) => [...m, { id: `u${Date.now()}`, role: "user", content: text }, { id: "streaming", role: "assistant", content: "" }]);
+    const stamp = Date.now();
+    const replyId = `streaming-${stamp}`;
+    setMessages((m) => [...m, { id: `u${stamp}`, role: "user", content: text }, { id: replyId, role: "assistant", content: "" }]);
     setStreaming(true);
+    setActiveReply(replyId);
     abort.current = new AbortController();
     const patchLast = (fn: (m: Message) => Message) =>
       setMessages((all) => all.map((m, i) => (i === all.length - 1 ? fn(m) : m)));
@@ -108,9 +112,10 @@ export function ChatView({ chatId, onChatCreated, onChanged }: Props) {
       if ((err as Error).name !== "AbortError") setError(err instanceof Error ? err.message : t("error"));
     } finally {
       setStreaming(false);
+      setActiveReply(null);
       abort.current = null;
       // drop an empty assistant placeholder so a failed reply doesn't hang on "Thinking…"
-      setMessages((all) => all.filter((m) => !(m.id === "streaming" && !m.content)));
+      setMessages((all) => all.filter((m) => !(m.id === replyId && !m.content)));
       if (!chatId) onChatCreated(cid);
       else onChanged();
     }
@@ -153,7 +158,7 @@ export function ChatView({ chatId, onChatCreated, onChanged }: Props) {
             </div>
           )}
           {messages.map((m) => (
-            <MessageBubble key={m.id} m={m} streaming={streaming && m.id === "streaming"} />
+            <MessageBubble key={m.id} m={m} streaming={streaming && m.id === activeReply} />
           ))}
           <div ref={bottom} />
         </div>
