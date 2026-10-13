@@ -23,7 +23,7 @@ DIM = 64
 
 
 class FakeLLM:
-    """Deterministic stand-in for Gemini: hashed bag-of-words embeddings, canned generation."""
+    """Deterministic stand-in for the model: hashed bag-of-words embeddings, canned generation."""
 
     def __init__(self):
         self.systems: list[str] = []

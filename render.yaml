@@ -2,12 +2,20 @@ services:
   - type: web
     name: chatbot-api
     runtime: docker
+    plan: standard   # local embedding model needs ~1.5 GB RAM; free/starter plans are too small
     rootDir: backend
     healthCheckPath: /healthz
     envVars:
       - { key: ENVIRONMENT, value: production }
       - { key: DATABASE_URL, sync: false }
-      - { key: GEMINI_API_KEY, sync: false }
+      - { key: LLM_BASE_URL, sync: false }
+      - { key: LLM_API_KEY, sync: false }
+      - { key: CHAT_MODEL, sync: false }
+      - { key: FALLBACK_CHAT_MODELS, sync: false }
+      - { key: VISION_MODEL, sync: false }
+      - { key: EMBED_BACKEND, value: local }
+      - { key: TRANSCRIBE_BACKEND, sync: false }
+      - { key: TRANSCRIBE_MODEL, sync: false }
       - { key: BLOB_READ_WRITE_TOKEN, sync: false }
       - { key: CORS_ORIGINS, sync: false }
       - { key: JWT_SECRET, generateValue: true }
@@ -16,11 +24,19 @@ services:
     name: chatbot-worker
     runtime: docker
     rootDir: backend
+    plan: standard
     dockerCommand: python worker.py
     envVars:
       - { key: ENVIRONMENT, value: production }
       - { key: DATABASE_URL, sync: false }
-      - { key: GEMINI_API_KEY, sync: false }
+      - { key: LLM_BASE_URL, sync: false }
+      - { key: LLM_API_KEY, sync: false }
+      - { key: CHAT_MODEL, sync: false }
+      - { key: FALLBACK_CHAT_MODELS, sync: false }
+      - { key: VISION_MODEL, sync: false }
+      - { key: EMBED_BACKEND, value: local }
+      - { key: TRANSCRIBE_BACKEND, sync: false }
+      - { key: TRANSCRIBE_MODEL, sync: false }
       - { key: BLOB_READ_WRITE_TOKEN, sync: false }
       - { key: JWT_SECRET, sync: false }
       - { key: REDIS_URL, fromService: { type: keyvalue, name: chatbot-redis, property: connectionString } }

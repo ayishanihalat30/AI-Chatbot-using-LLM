@@ -5,3 +5,4 @@ uploads
 .env
 tests
 .pytest_cache
+model_cache

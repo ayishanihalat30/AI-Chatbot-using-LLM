@@ -160,7 +160,7 @@ async def send_message(
             llm = get_llm()
         except Exception as e:
             log.error("LLM unavailable: %s", e)
-            yield sse("error", {"message": "AI service is not configured (missing or invalid GEMINI_API_KEY)."})
+            yield sse("error", {"message": "AI service is not configured. Check LLM_BASE_URL / LLM_API_KEY / CHAT_MODEL."})
             return
         async with SessionLocal() as s:
             chat = await s.get(Chat, chat_id)

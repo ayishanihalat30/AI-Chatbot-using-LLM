@@ -26,11 +26,22 @@ class Settings(BaseSettings):
     refresh_token_days: int = 30
     cors_origins: str = "http://localhost:3000"
 
-    gemini_api_key: str | None = None
-    chat_model: str = "gemini-3.1-flash-lite"
-    fallback_chat_models: str = "gemini-flash-latest,gemini-3.5-flash,gemini-3.7-flash"  # comma-separated, tried if the primary stays overloaded
-    embed_model: str = "gemini-embedding-2"
+    # Chat / vision: any OpenAI-compatible endpoint. Defaults target a local Ollama server.
+    llm_base_url: str = "http://localhost:11434/v1"
+    llm_api_key: str | None = None
+    chat_model: str = "llama3.2"
+    fallback_chat_models: str = ""  # comma-separated, tried if the primary is unavailable
+    vision_model: str = ""  # e.g. "qwen2.5vl" (Ollama) or a hosted vision model; empty = local RapidOCR only
+
+    # Embeddings: "local" (fastembed, no server needed) or "api" (server /embeddings)
+    embed_backend: str = "local"
+    embed_model: str = "sentence-transformers/paraphrase-multilingual-mpnet-base-v2"
     embed_dim: int = 768
+
+    # Speech-to-text: "local" (faster-whisper) or "api" (server /audio/transcriptions)
+    transcribe_backend: str = "local"
+    transcribe_model: str = "small"
+    model_cache_dir: str = "./model_cache"  # downloaded embedding / whisper weights
 
     blob_read_write_token: str | None = None
     upload_dir: str = "./uploads"
