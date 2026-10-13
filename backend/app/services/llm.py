@@ -1,0 +1,114 @@
+"""LLM access layer. Everything goes through the LLMClient protocol so tests can use a fake."""
+import asyncio
+import os
+import tempfile
+from collections.abc import AsyncIterator
+from typing import Protocol
+
+from app.config import get_settings
+
+
+class LLMClient(Protocol):
+    def stream(self, system: str, messages: list[dict]) -> AsyncIterator[str]: ...
+    async def generate(self, prompt: str) -> str: ...
+    async def embed(self, texts: list[str], query: bool = False) -> list[list[float]]: ...
+    async def describe_media(self, data: bytes, mime: str, instruction: str) -> str: ...
+
+
+INLINE_LIMIT = 15 * 1024 * 1024
+EMBED_BATCH = 50
+
+
+class GeminiClient:
+    def __init__(self) -> None:
+        from google import genai
+
+        s = get_settings()
+        if not s.gemini_api_key:
+            raise RuntimeError("GEMINI_API_KEY is not configured")
+        self._s = s
+        self._client = genai.Client(api_key=s.gemini_api_key)
+
+    async def stream(self, system: str, messages: list[dict]) -> AsyncIterator[str]:
+        from google.genai import types
+
+        contents = [
+            types.Content(role="model" if m["role"] == "assistant" else "user", parts=[types.Part(text=m["content"])])
+            for m in messages
+        ]
+        resp = await self._client.aio.models.generate_content_stream(
+            model=self._s.chat_model,
+            contents=contents,
+            config=types.GenerateContentConfig(system_instruction=system),
+        )
+        async for chunk in resp:
+            if chunk.text:
+                yield chunk.text
+
+    async def generate(self, prompt: str) -> str:
+        resp = await self._client.aio.models.generate_content(model=self._s.chat_model, contents=prompt)
+        return resp.text or ""
+
+    async def embed(self, texts: list[str], query: bool = False) -> list[list[float]]:
+        from google.genai import types
+
+        out: list[list[float]] = []
+        task = "RETRIEVAL_QUERY" if query else "RETRIEVAL_DOCUMENT"
+        for i in range(0, len(texts), EMBED_BATCH):
+            res = await self._client.aio.models.embed_content(
+                model=self._s.embed_model,
+                contents=texts[i : i + EMBED_BATCH],
+                config=types.EmbedContentConfig(task_type=task, output_dimensionality=self._s.embed_dim),
+            )
+            out.extend(_normalize(e.values) for e in res.embeddings)
+        return out
+
+    async def describe_media(self, data: bytes, mime: str, instruction: str) -> str:
+        from google.genai import types
+
+        if len(data) <= INLINE_LIMIT:
+            part = types.Part.from_bytes(data=data, mime_type=mime)
+            resp = await self._client.aio.models.generate_content(
+                model=self._s.chat_model, contents=[part, instruction]
+            )
+            return resp.text or ""
+        # Large media goes through the Files API.
+        with tempfile.NamedTemporaryFile(delete=False) as tmp:
+            tmp.write(data)
+            path = tmp.name
+        try:
+            f = await self._client.aio.files.upload(file=path, config={"mime_type": mime})
+            for _ in range(120):
+                f = await self._client.aio.files.get(name=f.name)
+                if f.state and f.state.name == "ACTIVE":
+                    break
+                if f.state and f.state.name == "FAILED":
+                    raise RuntimeError("Gemini file processing failed")
+                await asyncio.sleep(3)
+            resp = await self._client.aio.models.generate_content(
+                model=self._s.chat_model, contents=[f, instruction]
+            )
+            return resp.text or ""
+        finally:
+            os.unlink(path)
+
+
+def _normalize(v: list[float]) -> list[float]:
+    n = sum(x * x for x in v) ** 0.5 or 1.0
+    return [x / n for x in v]
+
+
+_llm: LLMClient | None = None
+
+
+def get_llm() -> LLMClient:
+    global _llm
+    if _llm is None:
+        _llm = GeminiClient()
+    return _llm
+
+
+def set_llm(client: LLMClient | None) -> None:
+    """Override the process-wide client (used by tests)."""
+    global _llm
+    _llm = client

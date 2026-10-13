@@ -1,0 +1,31 @@
+services:
+  - type: web
+    name: chatbot-api
+    runtime: docker
+    rootDir: backend
+    healthCheckPath: /healthz
+    envVars:
+      - { key: ENVIRONMENT, value: production }
+      - { key: DATABASE_URL, sync: false }
+      - { key: GEMINI_API_KEY, sync: false }
+      - { key: BLOB_READ_WRITE_TOKEN, sync: false }
+      - { key: CORS_ORIGINS, sync: false }
+      - { key: JWT_SECRET, generateValue: true }
+      - { key: REDIS_URL, fromService: { type: keyvalue, name: chatbot-redis, property: connectionString } }
+  - type: worker
+    name: chatbot-worker
+    runtime: docker
+    rootDir: backend
+    dockerCommand: python worker.py
+    envVars:
+      - { key: ENVIRONMENT, value: production }
+      - { key: DATABASE_URL, sync: false }
+      - { key: GEMINI_API_KEY, sync: false }
+      - { key: BLOB_READ_WRITE_TOKEN, sync: false }
+      - { key: JWT_SECRET, sync: false }
+      - { key: REDIS_URL, fromService: { type: keyvalue, name: chatbot-redis, property: connectionString } }
+  - type: keyvalue
+    name: chatbot-redis
+    plan: free
+    ipAllowList: []
+    maxmemoryPolicy: noeviction

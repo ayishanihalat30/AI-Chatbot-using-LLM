@@ -1,0 +1,13 @@
+__pycache__/
+*.pyc
+.venv/
+.env
+.env.local
+node_modules/
+.next/
+*.db
+.pytest_cache/
+.ruff_cache/
+coverage/
+uploads/
+.vercel
