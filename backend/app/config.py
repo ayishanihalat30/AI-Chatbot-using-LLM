@@ -27,8 +27,8 @@ class Settings(BaseSettings):
     cors_origins: str = "http://localhost:3000"
 
     gemini_api_key: str | None = None
-    chat_model: str = "gemini-3.8-flash"
-    fallback_chat_models: str = ""  # comma-separated, tried if the primary stays overloaded
+    chat_model: str = "gemini-flash-latest"
+    fallback_chat_models: str = "gemini-3.7-flash,gemini-3.5-flash,gemini-3.1-flash-lite"  # comma-separated, tried if the primary stays overloaded
     embed_model: str = "gemini-embedding-2"
     embed_dim: int = 768
 
