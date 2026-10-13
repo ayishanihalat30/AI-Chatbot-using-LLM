@@ -14,7 +14,6 @@ os.environ.pop("REDIS_URL", None)
 import httpx  # noqa: E402
 import pytest  # noqa: E402
 import pytest_asyncio  # noqa: E402
-
 from app.db import engine  # noqa: E402
 from app.main import app  # noqa: E402
 from app.models import Base  # noqa: E402

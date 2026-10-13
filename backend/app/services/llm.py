@@ -1,5 +1,6 @@
 """LLM access layer. Everything goes through the LLMClient protocol so tests can use a fake."""
 import asyncio
+import logging
 import os
 import tempfile
 from collections.abc import AsyncIterator
@@ -17,6 +18,14 @@ class LLMClient(Protocol):
 
 INLINE_LIMIT = 15 * 1024 * 1024
 EMBED_BATCH = 50
+RETRIES = 4
+BACKOFF = 1.5  # seconds; doubles each attempt
+log = logging.getLogger(__name__)
+
+
+def _transient(e: Exception) -> bool:
+    s = str(e)
+    return any(k in s for k in ("503", "UNAVAILABLE", "429", "RESOURCE_EXHAUSTED", "500 INTERNAL", "504", "overloaded"))
 
 
 class GeminiClient:
@@ -37,18 +46,48 @@ class GeminiClient:
             types.Content(role="model" if m["role"] == "assistant" else "user", parts=[types.Part(text=m["content"])])
             for m in messages
         ]
-        resp = await self._client.aio.models.generate_content_stream(
-            model=self._s.chat_model,
-            contents=contents,
-            config=types.GenerateContentConfig(system_instruction=system),
-        )
-        async for chunk in resp:
-            if chunk.text:
-                yield chunk.text
+        started = False
+        attempt = 0
+        for model in self._chat_models():
+            for attempt in range(RETRIES):
+                try:
+                    resp = await self._client.aio.models.generate_content_stream(
+                        model=model,
+                        contents=contents,
+                        config=types.GenerateContentConfig(system_instruction=system),
+                    )
+                    async for chunk in resp:
+                        if chunk.text:
+                            started = True
+                            yield chunk.text
+                    return
+                except Exception as e:
+                    # Only retry if nothing has been sent to the user yet.
+                    if started or not _transient(e):
+                        raise
+                    log.warning("Gemini %s transient error (attempt %d): %s", model, attempt + 1, str(e)[:120])
+                    if attempt < RETRIES - 1:
+                        await asyncio.sleep(BACKOFF * 2**attempt)
+        raise RuntimeError("Gemini is busy right now. Please try again in a moment.")
 
     async def generate(self, prompt: str) -> str:
-        resp = await self._client.aio.models.generate_content(model=self._s.chat_model, contents=prompt)
-        return resp.text or ""
+        last: Exception | None = None
+        for model in self._chat_models():
+            for attempt in range(RETRIES):
+                try:
+                    resp = await self._client.aio.models.generate_content(model=model, contents=prompt)
+                    return resp.text or ""
+                except Exception as e:
+                    if not _transient(e):
+                        raise
+                    last = e
+                    if attempt < RETRIES - 1:
+                        await asyncio.sleep(BACKOFF * 2**attempt)
+        raise last  # type: ignore[misc]
+
+    def _chat_models(self) -> list[str]:
+        extra = [m.strip() for m in self._s.fallback_chat_models.split(",") if m.strip()]
+        return list(dict.fromkeys([self._s.chat_model, *extra]))
 
     async def embed(self, texts: list[str], query: bool = False) -> list[list[float]]:
         from google.genai import types

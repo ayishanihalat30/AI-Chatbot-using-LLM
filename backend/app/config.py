@@ -28,6 +28,7 @@ class Settings(BaseSettings):
 
     gemini_api_key: str | None = None
     chat_model: str = "gemini-3.8-flash"
+    fallback_chat_models: str = ""  # comma-separated, tried if the primary stays overloaded
     embed_model: str = "gemini-embedding-2"
     embed_dim: int = 768
 

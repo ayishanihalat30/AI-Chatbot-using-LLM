@@ -2,11 +2,11 @@ import csv
 import io
 
 import pytest
-
 from app.db import normalize_url
 from app.services.chunking import Segment, chunk_segments
 from app.services.extract import extract, validate_upload
 from app.services.retrieval import Hit, rerank, rrf_fuse
+
 from tests.conftest import FakeLLM
 
 
