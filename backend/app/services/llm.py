@@ -18,14 +18,15 @@ class LLMClient(Protocol):
 
 INLINE_LIMIT = 15 * 1024 * 1024
 EMBED_BATCH = 50
-RETRIES = 4
-BACKOFF = 1.5  # seconds; doubles each attempt
+RETRIES = 2  # per model; then fail over to the next model
+BACKOFF = 1.0  # seconds; doubles each attempt
+FIRST_TOKEN_TIMEOUT = 20  # seconds to wait for a model to start answering
 log = logging.getLogger(__name__)
 
 
 def _transient(e: Exception) -> bool:
     s = str(e)
-    return any(k in s for k in ("503", "UNAVAILABLE", "429", "RESOURCE_EXHAUSTED", "500 INTERNAL", "504", "overloaded"))
+    return isinstance(e, asyncio.TimeoutError) or any(k in s for k in ("503", "UNAVAILABLE", "429", "RESOURCE_EXHAUSTED", "500 INTERNAL", "504", "overloaded"))
 
 
 class GeminiClient:
@@ -56,7 +57,14 @@ class GeminiClient:
                         contents=contents,
                         config=types.GenerateContentConfig(system_instruction=system),
                     )
-                    async for chunk in resp:
+                    it = resp.__aiter__()
+                    while True:
+                        try:
+                            chunk = await asyncio.wait_for(
+                                it.__anext__(), None if started else FIRST_TOKEN_TIMEOUT
+                            )
+                        except StopAsyncIteration:
+                            break
                         if chunk.text:
                             started = True
                             yield chunk.text
