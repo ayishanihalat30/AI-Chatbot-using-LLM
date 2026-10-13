@@ -84,8 +84,8 @@ async def _candidates(
 
 
 async def rerank(llm: LLMClient, query: str, hits: list[Hit], top_k: int) -> list[Hit]:
-    if len(hits) <= 1:
-        return hits
+    if len(hits) <= max(1, top_k):
+        return hits  # nothing to cut, so skip the extra LLM call
     listing = "\n".join(f"[{i}] {h.content[:500]!r}" for i, h in enumerate(hits))
     prompt = (
         "Rate how useful each passage is for answering the question, from 0 (irrelevant) to 10 (directly answers).\n"

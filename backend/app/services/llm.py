@@ -20,7 +20,7 @@ INLINE_LIMIT = 15 * 1024 * 1024
 EMBED_BATCH = 50
 RETRIES = 2  # per model; then fail over to the next model
 BACKOFF = 1.0  # seconds; doubles each attempt
-FIRST_TOKEN_TIMEOUT = 20  # seconds to wait for a model to start answering
+FIRST_TOKEN_TIMEOUT = 12  # seconds to wait for a model to start answering
 log = logging.getLogger(__name__)
 
 
