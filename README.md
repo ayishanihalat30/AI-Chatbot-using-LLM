@@ -9,13 +9,13 @@ Chat in **English, Malayalam, Hindi, Tamil, Kannada, Telugu, Arabic (RTL) and Fr
 | Database | PostgreSQL + **pgvector** (Neon / Supabase) |
 | Queue | Redis + RQ worker (falls back to in-process tasks when `REDIS_URL` is unset) |
 | Files | Vercel Blob (falls back to local disk in dev) |
-| LLM | Google **Gemini** — chat, embeddings, vision/OCR, audio & video understanding |
+| Models | 100% open source: **Llama/Qwen** chat via any OpenAI-compatible server (Ollama locally, or Groq/Together/OpenRouter hosted), **multilingual-mpnet** embeddings (fastembed), **Whisper** speech-to-text (faster-whisper), **RapidOCR** or a vision model for OCR |
 
 ```
 Browser ──REST/SSE──▶ FastAPI ──▶ Postgres+pgvector
    (Vercel)             │  ├────▶ Redis ──▶ RQ worker ─▶ extract → chunk → embed → store
                         │  ├────▶ Vercel Blob (uploads)
-                        └──┴────▶ Gemini API
+                        └──┴────▶ Ollama or hosted open-model API (+ local embeddings, Whisper, OCR)
 ```
 
 ## RAG pipeline
